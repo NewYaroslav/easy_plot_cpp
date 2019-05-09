@@ -4,7 +4,6 @@
 #include "GL/freeglut.h"
 #include <string>
 #include <vector>
-#include <algorithm>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -95,12 +94,13 @@ namespace easy_plot {
 
             data.resize(1);
             data[0].resize(y.size());
+            max_y = y[0];
+            min_y = y[0];
             for(size_t i = 0; i < y.size(); ++i) {
                 data[0][i] = y[i];
+                max_y = std::max(data[0][i], max_y);
+                min_y = std::min(data[0][i], min_y);
             }
-
-            max_y = *std::max_element(data[0].begin(), data[0].end());
-            min_y = *std::min_element(data[0].begin(), data[0].end());
 
             mode = EASY_PLOT_1D;
             window_name = name;
@@ -132,23 +132,28 @@ namespace easy_plot {
             line_style.resize(1);
             line_style[0] = style;
 
+            max_y = y[0];
+            min_y = y[0];
+            max_x = x[0];
+            min_x = x[0];
+
             data.resize(2);
             data[0].resize(x.size());
             data[1].resize(y.size());
+
             for(size_t i = 0; i < x.size(); ++i) {
                 data[0][i] = x[i];
                 data[1][i] = y[i];
+                max_y = std::max(data[1][i], max_y);
+                min_y = std::min(data[1][i], min_y);
+                max_x = std::max(data[0][i], max_x);
+                min_x = std::min(data[0][i], min_x);
             }
-
-            max_x = *std::max_element(data[0].begin(), data[0].end());
-            min_x = *std::min_element(data[0].begin(), data[0].end());
-            max_y = *std::max_element(data[1].begin(), data[1].end());
-            min_y = *std::min_element(data[1].begin(), data[1].end());
 
             mode = EASY_PLOT_2D;
             window_name = name;
             is_init = true;
-        }
+        } //
 
         /** \brief Нарисовать двумерный график
          * \param in вектор одномерного графика
@@ -174,22 +179,16 @@ namespace easy_plot {
             line_style = style;
 
             data.resize(vec.size());
+            max_y = vec[0][0];
+            min_y = vec[0][0];
             for(size_t n = 0; n < vec.size(); ++n) {
                 data[n].resize(vec[n].size());
                 for(size_t i = 0; i < vec[n].size(); ++i) {
                     data[n][i] = vec[n][i];
-                }
-                if(n == 0) {
-                    double pre_max_y = *std::max_element(data[n].begin(), data[n].end());
-                    double pre_min_y = *std::min_element(data[n].begin(), data[n].end());
-                    max_y = std::max(pre_max_y, max_y);
-                    min_y = std::min(pre_min_y, min_y);
-                } else {
-                    max_y = *std::max_element(data[n].begin(), data[n].end());
-                    min_y = *std::min_element(data[n].begin(), data[n].end());
+                    max_y = std::max(data[n][i], max_y);
+                    min_y = std::min(data[n][i], min_y);
                 }
             }
-
             mode = EASY_PLOT_1D_SEVERAL;
             window_name = name;
             is_init = true;
@@ -215,7 +214,7 @@ namespace easy_plot {
 
                 glColor3f(1, 1, 1);
                 glVertex2f(0, 0);
-                glVertex2f(data[0].size(), 0);
+                glVertex2f(data[0].size() - 1, 0);
 
                 glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
                 for(size_t i = 0; i < data[0].size() - 1; ++i) {
@@ -232,7 +231,7 @@ namespace easy_plot {
 
                 glColor3f(1, 1, 1);
                 glVertex2f(0, 0);
-                glVertex2f(data[0].size(), 0);
+                glVertex2f(data[0].size() - 1, 0);
 
                 for(size_t n = 0; n < data.size(); ++n) {
                     glColor3f(line_style[n].r, line_style[n].g, line_style[n].b);
