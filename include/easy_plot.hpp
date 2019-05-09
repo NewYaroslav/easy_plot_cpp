@@ -208,11 +208,16 @@ namespace easy_plot {
         /** \brief Функция рисования
          */
         void draw() {
+            // рисуем график
             if(mode == EASY_PLOT_1D) {
-                glClear(GL_COLOR_BUFFER_BIT); /*Функция очищения экрана*/
+                glClear(GL_COLOR_BUFFER_BIT);
                 glBegin(GL_LINES);//начало рисования линий
-                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
 
+                glColor3f(1, 1, 1);
+                glVertex2f(0, 0);
+                glVertex2f(data[0].size(), 0);
+
+                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
                 for(size_t i = 0; i < data[0].size() - 1; ++i) {
                     glVertex2f((double)i, data[0][i]);
                     glVertex2f((double)i + 1.0, data[0][i + 1]);
@@ -220,9 +225,14 @@ namespace easy_plot {
                 glEnd();
                 glFlush();
             } else
+            // рисуем несколько графиков поверх друг друга
             if(mode == EASY_PLOT_1D_SEVERAL) {
-                glClear(GL_COLOR_BUFFER_BIT); /*Функция очищения экрана*/
+                glClear(GL_COLOR_BUFFER_BIT);
                 glBegin(GL_LINES);//начало рисования линий
+
+                glColor3f(1, 1, 1);
+                glVertex2f(0, 0);
+                glVertex2f(data[0].size(), 0);
 
                 for(size_t n = 0; n < data.size(); ++n) {
                     glColor3f(line_style[n].r, line_style[n].g, line_style[n].b);
@@ -234,11 +244,16 @@ namespace easy_plot {
                 glEnd();
                 glFlush();
             } else
+            // рисуем график заивисмости y от x
             if(mode == EASY_PLOT_2D) {
                 glClear(GL_COLOR_BUFFER_BIT);
                 glBegin(GL_LINES);
-                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
 
+                glColor3f(1, 1, 1);
+                glVertex2f(min_x, 0);
+                glVertex2f(max_x, 0);
+
+                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
                 for(size_t i = 0; i < data[0].size() - 1; ++i) {
                     glVertex2f(data[0][i], data[1][i]);
                     glVertex2f(data[0][i + 1], data[1][i + 1]);
@@ -276,9 +291,8 @@ namespace easy_plot {
             }
             // необходима инициализация окна
             if(mode == EASY_PLOT_1D || mode == EASY_PLOT_1D_SEVERAL) {
-                glutInitWindowSize(std::min(
-                    (int)(EASY_PLOT_DEF_WIDTH_STEP*data[0].size()),
-                    EASY_PLOT_DEF_WIDTH),
+                glutInitWindowSize(
+                    EASY_PLOT_DEF_WIDTH,
                     EASY_PLOT_DEF_HEIGHT);
                 glutInitWindowPosition(0, 0);
                 win_id = glutCreateWindow(window_name.c_str());
@@ -299,9 +313,8 @@ namespace easy_plot {
                 glutMainLoopEvent();
             } else
             if(mode == EASY_PLOT_2D) {
-                glutInitWindowSize(std::min(
-                    (int)(EASY_PLOT_DEF_WIDTH_STEP*(max_x - min_x)),
-                    EASY_PLOT_DEF_WIDTH),
+                glutInitWindowSize(
+                    EASY_PLOT_DEF_WIDTH,
                     EASY_PLOT_DEF_HEIGHT);
                 glutInitWindowPosition(0, 0);
                 win_id = glutCreateWindow(window_name.c_str());

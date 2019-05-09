@@ -24,7 +24,6 @@
 					<Add option="-O2" />
 					<Add option="-std=c++11" />
 					<Add option="-DFREEGLUT_STATIC" />
-					<Add directory="../../lib/gl2ps" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/include" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/lib/x64" />
 					<Add directory="../../include" />
@@ -35,7 +34,6 @@
 					<Add library="opengl32" />
 					<Add library="winmm" />
 					<Add library="gdi32" />
-					<Add directory="../../lib/gl2ps" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/lib/x64" />
 					<Add directory="../../include" />
 				</Linker>
@@ -47,10 +45,6 @@
 		</Compiler>
 		<Unit filename="../../include/easy_plot.cpp" />
 		<Unit filename="../../include/easy_plot.hpp" />
-		<Unit filename="../../lib/gl2ps/gl2ps.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="../../lib/gl2ps/gl2ps.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />

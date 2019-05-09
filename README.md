@@ -11,7 +11,7 @@
 
 * Инструкция для *Code::Blocks* и компилятора *mingw*
 
-Подключить библиотеку *freeglut* или *freeglut_static*, а также *opengl32*, *winmm*, *gdi32*. 
+Подключить библиотеку *freeglut* или *freeglut_static* (во втором случае также установите макрос FREEGLUT_STATIC), а также *opengl32*, *winmm*, *gdi32*. 
 Подключить в проекте заголовочный файл *include/easy_plot.hpp*
 Указать С++11 или выше
 
