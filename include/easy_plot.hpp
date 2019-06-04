@@ -8,15 +8,15 @@
 #include <atomic>
 #include <mutex>
 #include <stdarg.h>
+#include <numeric>
 
 #include <iostream>
 
 namespace easy_plot {
 //------------------------------------------------------------------------------
     const int EASY_PLOT_DEF_WIDTH       = 480;  /**< Ширина по умолчанию */
-    const int EASY_PLOT_DEF_WIDTH_STEP  = 4;    /**< Шаг ширины по умолчанию */
     const int EASY_PLOT_DEF_HEIGHT      = 240;  /**< Высота по умолчанию */
-    const int EASY_PLOT_DEF_SCALE       = 1.1;  /**< Коэффициент отсутпа от нижней и верхней границы */
+    const double EASY_PLOT_DEF_INDENT   = 0.1;  /**< Размер отсутпа от границы окна */
 //------------------------------------------------------------------------------
     enum TypesErrors {
         EASY_PLOT_OK = 0,               ///< Ошибок нет
@@ -24,26 +24,54 @@ namespace easy_plot {
     };
 //------------------------------------------------------------------------------
     enum PlotTypes {
+       EASY_PLOT_NO_INIT = -1,
        EASY_PLOT_1D = 0,
        EASY_PLOT_1D_SEVERAL = 1,
        EASY_PLOT_2D = 2,
+    };
+//------------------------------------------------------------------------------
+    /** \brief Класс для хранения данных стиля окна
+     */
+    class WindowSpec {
+        public:
+        int width = EASY_PLOT_DEF_WIDTH;        /**< Шириная окна графика */
+        int height = EASY_PLOT_DEF_HEIGHT;      /**< Высота окна графика */
+        double indent = EASY_PLOT_DEF_INDENT;   /**< Отступ от края окна */
+        //@{
+        /** цвет фона (R G B) */
+        double br = 0.0, bg = 0.0, bb = 0.0;
+        //@}
+        //@{
+        /** цвет сетки (R G B) */
+        double gr = 0.1, gg = 0.1, gb = 0.1;
+        //@}
+        //@{
+        /** цвет рамки (R G B) */
+        double fr = 1.0, fg = 1.0, fb = 1.0;
+        //@}
+        bool is_zero_x_line = false;            /**< Линия нуля, если true то линия рисуется */
+        bool is_zero_y_line = false;            /**< Линия нуля, если true то линия рисуется */
+        bool is_grid = true;
+        double grid_period = 0.1;               /**< Период сетки */
+
+        /** \brief Инициализация параметров Окна по умолчанию
+         */
+        WindowSpec() { };
     };
 //------------------------------------------------------------------------------
     /** \brief Класс для хранения данных стиля линии
      */
     class LineSpec {
         public:
-        double r, g, b, a;
+        //@{
+        /** цвет линии (R G B) */
+        double r = 0.0, g = 1.0, b = 1.0, a = 1.0;
+        //@}
 
         /** \brief Инициализация параметров линии по умолчанию
          * Данный конструктор инициализирует линию цветом по умолчанию
          */
-        LineSpec() {
-            r = 0.0;
-            g = 1.0;
-            b = 1.0;
-            a = 1.0;
-        }
+        LineSpec() {};
 
         /** \brief Инициализация параметров линии
          * \param red уровеньк расного
@@ -60,206 +88,239 @@ namespace easy_plot {
     };
 //------------------------------------------------------------------------------
     class Drawing;
-    std::vector<Drawing*> drawings;
-    //static Drawing* current_instance;
+    static std::vector<Drawing*> drawings;
 //------------------------------------------------------------------------------
     /** \brief Класс для отрисовки графиков
      */
     class Drawing {
         private:
-        std::vector<std::vector<double>> data;
-        std::vector<LineSpec> line_style;
-        double min_x, max_x, min_y, max_y;
-        int mode = 0;
-        bool is_init = false;
-        bool is_window_init = false;
-        public:
-        static Drawing* current_instance;
-        std::string window_name;    /**< Имя окна */
-        int win_id = -1;
-
-        /** \brief Инициализировать график
-         * \param name имя окна
-         * \param y вектор по оси Y
-         * \param style стиль линии
+        WindowSpec window_style;                        /**< Стиль окна */
+        std::vector<std::vector<double>> raw_data_y;    /**< Данные для рисования всех графиков */
+        std::vector<std::vector<double>> raw_data_x;    /**< Данные для рисования всез графиков */
+        std::vector<LineSpec> line_style;               /**< Стили линий для всех графиков */
+        std::atomic<bool> is_raw_data;
+        double min_x, max_x, min_y, max_y;              /**< Минимумы и максимумы данных для рисования графиков */
+        std::atomic<bool> is_window_init;
+        /** \brief Получить нормализованное значение Y
+         * \param ny не нормализованное значение
+         * \return Нормализованное значение Y
          */
-        template <typename T1>
-        void init(std::string name, std::vector<T1> &y, LineSpec style) {
-            is_init = false;
-            if(name == "" || y.size() < 2)
-                return;
+        inline double get_y(double ny) {
+            if(max_y == min_y) return 0.0;
+            return ((ny - min_y) / (max_y - min_y)) * 2.0 - 1.0;
+        }
 
-            line_style.resize(1);
-            line_style[0] = style;
+        /** \brief Получить нормализованное значение X
+         * \param nx не нормализованное значение
+         * \return Нормализованное значение X
+         */
+        inline double get_x(double nx) {
+            if(max_x == min_x) return 0.0;
+            return ((nx - min_x) / (max_x - min_x)) * 2.0 - 1.0;
+        }
 
-            data.resize(1);
-            data[0].resize(y.size());
-            max_y = y[0];
-            min_y = y[0];
-            for(size_t i = 0; i < y.size(); ++i) {
-                data[0][i] = y[i];
-                max_y = std::max(data[0][i], max_y);
-                min_y = std::min(data[0][i], min_y);
+        /** \brief Получить значения оси X
+         * \param size размер массива
+         * \return данные оси X
+         */
+        std::vector<std::vector<int>> get_x_axis_values(size_t size) {
+            std::vector<int> x(size);
+            std::iota(std::begin(x), std::end(x), 0);
+            std::vector<std::vector<int>> temp;
+            temp.push_back(x);
+            return temp;
+        }
+
+        /** \brief Получить значения оси X
+         * \param size размер массива
+         * \return данные оси X
+         */
+        template<typename T1>
+        std::vector<std::vector<int>> get_x_axis_values(std::vector<std::vector<T1>> & data) {
+            std::vector<std::vector<int>> temp(data.size());
+            for(size_t  i = 0; i < data.size(); ++i) {
+                temp[i].resize(data[i].size());
+                std::iota(std::begin(temp[i]), std::end(temp[i]), 0);
+
             }
-
-            mode = EASY_PLOT_1D;
-            window_name = name;
-            is_init = true;
+            return temp;
         }
 
-        /** \brief Конструктор класса графика
+        template<typename T1>
+        std::vector<std::vector<T1>> get_axis_values(std::vector<T1> &data) {
+            std::vector<std::vector<T1>> temp;
+            temp.push_back(data);
+            return temp;
+        }
+
+        template<typename T1>
+        std::vector<T1> get_style_values(T1 &data) {
+            std::vector<T1> temp;
+            temp.push_back(data);
+            return temp;
+        }
+
+        void set_start_state() {
+            is_raw_data = false;
+            is_window_init = false;
+        }
+
+        public:
+        static Drawing* current_instance;       /**< Указатель на класс */
+        std::string window_name;                /**< Имя окна графика */
+        int win_id = -1;                        /**< Униклаьный ID графика */
+
+        Drawing() {
+            set_start_state();
+        };
+
+        /** \brief Инициализация графика
          * \param name имя окна
+         * \param wstyle парамтеры стиля окна
+         * \param x значения графика X
+         * \param y значения графика Y
+         * \param styles стили линий
+         */
+        template <typename T1, typename T2>
+        void init(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &x, std::vector<std::vector<T2>> &y, std::vector<LineSpec> &styles) {
+            is_raw_data = false;
+            if(x.size() != y.size() || styles.size() != y.size() || name == "" || x[0].size() == 0 || y[0].size() == 0) return;
+            max_y = y[0][0];
+            min_y = y[0][0];
+            max_x = x[0][0];
+            min_x = x[0][0];
+
+            raw_data_x.resize(x.size());
+            raw_data_y.resize(y.size());
+            for(size_t i = 0; i < x.size(); ++i) {
+                if(x[i].size() != y[i].size()) return;
+                raw_data_x[i].resize(x[i].size());
+                raw_data_y[i].resize(y[i].size());
+                for(size_t j = 0; j < x[i].size(); ++j) {
+                    raw_data_x[i][j] = x[i][j];
+                    raw_data_y[i][j] = y[i][j];
+                    max_y = std::max((double)y[i][j], max_y);
+                    min_y = std::min((double)y[i][j], min_y);
+                    max_x = std::max((double)x[i][j], max_x);
+                    min_x = std::min((double)x[i][j], min_x);
+                } // for j
+            } // for i
+            window_name = name;
+            window_style = wstyle;
+            line_style = styles;
+            is_raw_data = true;
+            if(is_window_init) glutPostRedisplay(); //is_redraw = true;
+        }
+
+        /** \brief Инициализация графика
+         * \param name имя окна
+         * \param wstyle стиль окна
          * \param y вектор по оси Y
          * \param style стиль линии
          */
         template <typename T1>
-        Drawing(std::string name, std::vector<T1> &y, LineSpec style) {
-            init(name, y, style);
+        void init(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style) {
+            std::vector<LineSpec> vstyle = get_style_values(style);
+            std::vector<std::vector<int>> vx = get_x_axis_values(y.size());
+            std::vector<std::vector<T1>> vy = get_axis_values(y);
+            init(name, wstyle, vx, vy, vstyle);
         }
 
-        /** \brief Инициализировать график
+        template <typename T1>
+        Drawing(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style) {
+            set_start_state();
+            init(name, wstyle, y, style);
+        };
+
+        /** \brief Инициализация графика
          * \param name имя окна
+         * \param wstyle стиль окна
          * \param x вектор по оси X
          * \param y вектор по оси Y
          * \param style стиль линии
          */
         template <typename T1, typename T2>
-        void init(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
-            is_init = false;
-            if(name == "" || x.size() < 2 || y.size() < 2 || x.size() != y.size())
-                return;
+        void init(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
+            std::vector<LineSpec> vstyle = get_style_values(style);
+            std::vector<std::vector<T1>> vx = get_axis_values(x);
+            std::vector<std::vector<T2>> vy = get_axis_values(y);
+            init(name, wstyle, vx, vy, vstyle);
+        }
 
-            line_style.resize(1);
-            line_style[0] = style;
-
-            max_y = y[0];
-            min_y = y[0];
-            max_x = x[0];
-            min_x = x[0];
-
-            data.resize(2);
-            data[0].resize(x.size());
-            data[1].resize(y.size());
-
-            for(size_t i = 0; i < x.size(); ++i) {
-                data[0][i] = x[i];
-                data[1][i] = y[i];
-                max_y = std::max(data[1][i], max_y);
-                min_y = std::min(data[1][i], min_y);
-                max_x = std::max(data[0][i], max_x);
-                min_x = std::min(data[0][i], min_x);
-            }
-
-            mode = EASY_PLOT_2D;
-            window_name = name;
-            is_init = true;
-        } //
-
-        /** \brief Нарисовать двумерный график
-         * \param in вектор одномерного графика
-         */
         template <typename T1, typename T2>
-        Drawing(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
-            init(name, x, y, style);
-        }
+        Drawing(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
+            set_start_state();
+            init(name, wstyle, x, y, style);
+        };
 
-        template <typename T1>
-        void init(std::string name, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &style) {
-            is_init = false;
-            if(name == "" || vec.size() == 0 || style.size() != vec.size())
-                return;
-
-            if(vec[0].size() < 2)
-                return;
-            for(size_t i = 1; i < vec.size(); ++i) {
-                if(vec[i].size() != vec[i - 1].size())
-                    return;
-            }
-
-            line_style = style;
-
-            data.resize(vec.size());
-            max_y = vec[0][0];
-            min_y = vec[0][0];
-            for(size_t n = 0; n < vec.size(); ++n) {
-                data[n].resize(vec[n].size());
-                for(size_t i = 0; i < vec[n].size(); ++i) {
-                    data[n][i] = vec[n][i];
-                    max_y = std::max(data[n][i], max_y);
-                    min_y = std::min(data[n][i], min_y);
-                }
-            }
-            mode = EASY_PLOT_1D_SEVERAL;
-            window_name = name;
-            is_init = true;
-        }
-
-        /** \brief Нарисовать график
+        /** \brief Инициализация графика
          * \param name имя окна
          * \param y
          * \param style стиль линии
          */
         template <typename T1>
-        Drawing(std::string name, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &style) {
-            init(name, vec, style);
+        void init(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &styles) {
+            std::vector<std::vector<int>> vx = get_x_axis_values(vec);
+            init(name, wstyle, vx, vec, styles);
         }
 
-        /** \brief Функция рисования
+        template <typename T1>
+        Drawing(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &styles) {
+            set_start_state();
+            init(name, wstyle, vec, styles);
+        };
+
+        /** \brief Функция рисования графика
          */
         void draw() {
-            // рисуем график
-            if(mode == EASY_PLOT_1D) {
-                glClear(GL_COLOR_BUFFER_BIT);
-                glBegin(GL_LINES);//начало рисования линий
-
-                glColor3f(1, 1, 1);
-                glVertex2f(0, 0);
-                glVertex2f(data[0].size() - 1, 0);
-
-                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
-                for(size_t i = 0; i < data[0].size() - 1; ++i) {
-                    glVertex2f((double)i, data[0][i]);
-                    glVertex2f((double)i + 1.0, data[0][i + 1]);
-                }
-                glEnd();
-                glFlush();
-            } else
-            // рисуем несколько графиков поверх друг друга
-            if(mode == EASY_PLOT_1D_SEVERAL) {
-                glClear(GL_COLOR_BUFFER_BIT);
-                glBegin(GL_LINES);//начало рисования линий
-
-                glColor3f(1, 1, 1);
-                glVertex2f(0, 0);
-                glVertex2f(data[0].size() - 1, 0);
-
-                for(size_t n = 0; n < data.size(); ++n) {
-                    glColor3f(line_style[n].r, line_style[n].g, line_style[n].b);
-                    for(size_t i = 0; i < data[n].size() - 1; ++i) {
-                        glVertex2f((double)i, data[n][i]);
-                        glVertex2f((double)i + 1.0, data[n][i + 1]);
-                    }
-                }
-                glEnd();
-                glFlush();
-            } else
-            // рисуем график заивисмости y от x
-            if(mode == EASY_PLOT_2D) {
-                glClear(GL_COLOR_BUFFER_BIT);
-                glBegin(GL_LINES);
-
-                glColor3f(1, 1, 1);
-                glVertex2f(min_x, 0);
-                glVertex2f(max_x, 0);
-
-                glColor3f(line_style[0].r, line_style[0].g, line_style[0].b);
-                for(size_t i = 0; i < data[0].size() - 1; ++i) {
-                    glVertex2f(data[0][i], data[1][i]);
-                    glVertex2f(data[0][i + 1], data[1][i + 1]);
-                }
-                glEnd();
-                glFlush();
+            if(!is_raw_data) return;
+            glClear(GL_COLOR_BUFFER_BIT);
+            glBegin(GL_LINES);//начало рисования линий
+            if(window_style.is_zero_x_line) {
+                glColor3f(window_style.fr, window_style.fg, window_style.fb);
+                glVertex2f(-1, get_y(0));
+                glVertex2f(1, get_y(0));
             }
+            if(window_style.is_zero_y_line) {
+                glColor3f(window_style.fr, window_style.fg, window_style.fb);
+                glVertex2f(get_x(0), -1);
+                glVertex2f(get_x(0), 1);
+            }
+            if(window_style.is_grid && window_style.grid_period != 0.0) {
+                glColor3f(window_style.gr, window_style.gg, window_style.gb);
+                for(double x = -1.0; x < 1.0; x += window_style.grid_period) {
+                    glVertex2f(x, -1);
+                    glVertex2f(x, 1);
+                }
+                for(double y = -1.0; y < 1.0; y += window_style.grid_period) {
+                    glVertex2f(-1, y);
+                    glVertex2f(1, y);
+                }
+            }
+            // рисуем график
+            for(size_t nl = 0; nl < line_style.size(); ++nl) {
+                glColor3f(line_style[nl].r, line_style[nl].g, line_style[nl].b);
+                for(size_t i = 0; i < raw_data_y[nl].size() - 1; ++i) {
+                    glVertex2f(get_x(raw_data_x[nl][i]), get_y(raw_data_y[nl][i]));
+                    glVertex2f(get_x(raw_data_x[nl][i + 1]), get_y(raw_data_y[nl][i + 1]));
+                }
+            }
+            // рисуем рамку
+            glColor3f(window_style.fr, window_style.fg, window_style.fb);
+            glVertex2f(-1, 1);
+            glVertex2f(1, 1);
+
+            glVertex2f(1, 1);
+            glVertex2f(1, -1);
+
+            glVertex2f(1, -1);
+            glVertex2f(-1, -1);
+
+            glVertex2f(-1, -1);
+            glVertex2f(-1, 1);
+
+            glEnd();
+            glFlush();
         }
 
         static void update() {
@@ -276,68 +337,32 @@ namespace easy_plot {
          */
         void update_window() {
             if(is_window_init) {
-                //if(glutGetWindow() == win_id) {
-                //std::cout << glutGetWindow() << " " << win_id << std::endl;
-                //std::cout << current_instance << std::endl;
-                // если окно инициализировано, вызываем неблокирующий glutMainLoop
-                //glutSetWindow(win_id);
-                //::glutDisplayFunc(update);
-                   //glut
                 glutMainLoopEvent();
-                //}
-                //glutMainLoopEvent();
                 return;
             }
             // необходима инициализация окна
-            if(mode == EASY_PLOT_1D || mode == EASY_PLOT_1D_SEVERAL) {
-                glutInitWindowSize(
-                    EASY_PLOT_DEF_WIDTH,
-                    EASY_PLOT_DEF_HEIGHT);
-                glutInitWindowPosition(0, 0);
-                win_id = glutCreateWindow(window_name.c_str());
-                glutSetWindow(win_id);
+            glutInitWindowSize(
+                    window_style.width,
+                    window_style.height);
+            glutInitWindowPosition(0, 0);
+            win_id = glutCreateWindow(window_name.c_str());
+            glutSetWindow(win_id);
 
-                glClearColor(0.0, 0.0, 0.0, 1.0);
-                glMatrixMode(GL_PROJECTION); /*Настроим 2-х мерный вид*/
-                glLoadIdentity();
+            glClearColor(window_style.br, window_style.bg, window_style.bb, 1.0);
+            glMatrixMode(GL_PROJECTION); /*Настроим 2-х мерный вид*/
+            glLoadIdentity();
 
-                double offset = (max_y - min_y) * EASY_PLOT_DEF_SCALE;
-                glOrtho(
-                    0.0, (double)(data[0].size() - 1),
-                    min_y - offset, max_y + offset,
+            glOrtho(
+                    -1.0 - window_style.indent, 1.0  + window_style.indent,
+                    -1.0 - window_style.indent, 1.0  + window_style.indent,
                     -1.0, 1.0);
-
-                //current_instance = this;
-                ::glutDisplayFunc(update);
-                glutMainLoopEvent();
-            } else
-            if(mode == EASY_PLOT_2D) {
-                glutInitWindowSize(
-                    EASY_PLOT_DEF_WIDTH,
-                    EASY_PLOT_DEF_HEIGHT);
-                glutInitWindowPosition(0, 0);
-                win_id = glutCreateWindow(window_name.c_str());
-                glutSetWindow(win_id);
-
-                glClearColor(0.0, 0.0, 0.0, 1.0);
-                glMatrixMode(GL_PROJECTION); /*Настроим 2-х мерный вид*/
-                glLoadIdentity();
-
-                double offset = (max_y - min_y) * EASY_PLOT_DEF_SCALE;
-                glOrtho(
-                    min_x, max_x,
-                    min_y - offset, max_y + offset,
-                    -1.0, 1.0);
-
-                //current_instance = this;
-                ::glutDisplayFunc(update);
-                glutMainLoopEvent();
-            }
+            ::glutDisplayFunc(update);
+            glutMainLoopEvent();
             is_window_init = true;
         }
     };
 //------------------------------------------------------------------------------
-    std::mutex drawings_mutex;
+    static std::mutex drawings_mutex;
 //------------------------------------------------------------------------------
     /** \brief Инициализировать работу с графиками
      * \param argc
@@ -374,57 +399,15 @@ namespace easy_plot {
         return -1;
     }
 //------------------------------------------------------------------------------
-    /** \brief Создает двухмерный линейный график данных в Y по сравнению с соответствующими значениями в X.
-     * Функция графика отображает Y против X,
-     * X и Y должны иметь одинаковую длину.
+    /** \brief Cтроит несколько графиков, используя одинаковые оси для всех линий
      * \param name имя окна
-     * \param x вектор по оси X
-     * \param y вектор по оси Y
-     * \param style стиль линии
-     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
-     */
-    template <typename T1, typename T2>
-    int plot(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
-        if(x.size() != y.size()) return EASY_PLOT_INVALID_PARAMETR;
-        drawings_mutex.lock();
-        int pos = get_pos_plot(name);
-        if(pos >= 0) {
-            drawings[pos]->init(name, x, y, style);
-        } else {
-            drawings.push_back(new Drawing(name, x, y, style));
-        }
-        drawings_mutex.unlock();
-    }
-//------------------------------------------------------------------------------
-    /** \brief Создает двухмерный линейный график данных в Y по сравнению с индексом каждого значения.
-     * \param name имя окна
-     * \param y вектор по оси Y
-     * \param style стиль линии
-     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
-     */
-    template <typename T1>
-    int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
-        if(y.size() <= 1)
-            return EASY_PLOT_INVALID_PARAMETR;
-
-        drawings_mutex.lock();
-        int pos = get_pos_plot(name);
-        if(pos >= 0) {
-            drawings[pos]->init(name, y, style);
-        } else {
-            drawings.push_back(new Drawing(name, y, style));
-        }
-        drawings_mutex.unlock();
-    }
-//------------------------------------------------------------------------------
-    /** \brief Cтроит несколько векторов, используя одинаковые оси для всех линий
-     * \param name имя окна
+     * \param wstyle стиль окна
      * \param count количество векторов и стилей
      * \param ... перечисление векторов и стилей по порядку (y2, style2, y3, style2 и т.д.)
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1>
-    int plot(std::string name, int count, ...) {
+    int plot(std::string name, WindowSpec wstyle, int count, ...) {
         va_list va;
         va_start(va, count);
 
@@ -441,11 +424,72 @@ namespace easy_plot {
         drawings_mutex.lock();
         int pos = get_pos_plot(name);
         if(pos >= 0) {
-            drawings[pos]->init(name, data, line_style);
+            drawings[pos]->init(name, wstyle, data, line_style);
         } else {
-            drawings.push_back(new Drawing(name, data, line_style));
+            drawings.push_back(new Drawing(name, wstyle, data, line_style));
         }
         drawings_mutex.unlock();
+        return EASY_PLOT_OK;
+    }
+//------------------------------------------------------------------------------
+    /** \brief Cтроит несколько графиков, используя одинаковые оси для всех линий
+     * \param name имя окна
+     * \param count количество векторов и стилей
+     * \param ... перечисление векторов и стилей по порядку (y2, style2, y3, style2 и т.д.)
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    template <typename T1>
+    int plot(std::string name, int count, ...) {
+        va_list args;
+        va_start(args, count);
+        int err = plot<T1>(name, WindowSpec(), count, args);
+        va_end(args);
+        return err;
+    }
+//------------------------------------------------------------------------------
+    /** \brief Создает двухмерный линейный график данных в Y по сравнению с соответствующими значениями в X.
+     * Функция графика отображает Y против X,
+     * X и Y должны иметь одинаковую длину.
+     * \param name имя окна
+     * \param x вектор по оси X
+     * \param y вектор по оси Y
+     * \param style стиль линии
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    template <typename T1, typename T2>
+    int plot(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
+        if(x.size() != y.size()) return EASY_PLOT_INVALID_PARAMETR;
+        drawings_mutex.lock();
+        int pos = get_pos_plot(name);
+        if(pos >= 0) {
+            drawings[pos]->init(name, WindowSpec(), x, y, style);
+        } else {
+            drawings.push_back(new Drawing(name, WindowSpec(), x, y, style));
+        }
+        drawings_mutex.unlock();
+        return EASY_PLOT_OK;
+    }
+//------------------------------------------------------------------------------
+    /** \brief Создает двухмерный линейный график данных в Y по сравнению с индексом каждого значения.
+     * \param name имя окна
+     * \param y вектор по оси Y
+     * \param style стиль линии
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    template <typename T1>
+    int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
+        if(y.size() <= 1)
+            return EASY_PLOT_INVALID_PARAMETR;
+
+        drawings_mutex.lock();
+        int pos = get_pos_plot(name);
+        if(pos >= 0) {
+            drawings[pos]->init(name, WindowSpec(), y, style);
+        } else {
+            drawings.push_back(new Drawing(name, WindowSpec(), y, style));
+        }
+        drawings_mutex.unlock();
+        return EASY_PLOT_OK;
     }
 //------------------------------------------------------------------------------
 }
