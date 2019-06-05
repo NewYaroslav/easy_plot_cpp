@@ -276,7 +276,12 @@ namespace easy_plot {
             window_name = name;
             window_style = wstyle;
             line_style = styles;
-            if(wstyle.is_zero_x_line && min_y >= 0.0) min_y = -1.0;
+            if(wstyle.is_zero_x_line && min_y >= 0.0) min_y = 0.0;
+            // изменяем min и max по оси Y чтобы был отступ
+            double additive = window_style.indent_frame * (max_y - min_y);
+            max_y += additive;
+            min_y -= additive;
+
             is_raw_data = true;
             if(is_window_init) glutPostRedisplay();
         }
@@ -342,16 +347,6 @@ namespace easy_plot {
             if(!is_raw_data) return;
             glClear(GL_COLOR_BUFFER_BIT);
             glBegin(GL_LINES);//начало рисования линий
-            if(window_style.is_zero_x_line) {
-                glColor3f(window_style.fr, window_style.fg, window_style.fb);
-                glVertex2f(-1, get_y(0));
-                glVertex2f(1, get_y(0));
-            }
-            if(window_style.is_zero_y_line) {
-                glColor3f(window_style.fr, window_style.fg, window_style.fb);
-                glVertex2f(get_x(0), -1);
-                glVertex2f(get_x(0), 1);
-            }
             if(window_style.is_grid && window_style.grid_period != 0.0) {
                 glColor3f(window_style.gr, window_style.gg, window_style.gb);
                 for(double x = -1.0; x < 1.0; x += window_style.grid_period) {
@@ -363,8 +358,18 @@ namespace easy_plot {
                     glVertex2f(1, y);
                 }
             }
+            if(window_style.is_zero_x_line) {
+                glColor3f(window_style.fr, window_style.fg, window_style.fb);
+                glVertex2f(-1, get_y(0));
+                glVertex2f(1, get_y(0));
+            }
+            if(window_style.is_zero_y_line) {
+                glColor3f(window_style.fr, window_style.fg, window_style.fb);
+                glVertex2f(get_x(0), -1);
+                glVertex2f(get_x(0), 1);
+            }
 
-            double min_mouse_diff = 4.0 + 4.0 * window_style.indent;
+            double min_distance = 4.0 + 4.0 * window_style.indent;
             double real_mouse_x = 0.0, real_mouse_y = 0.0;
             double mouse_data_x = 0.0;
             double mouse_data_y = 0.0;
@@ -378,23 +383,23 @@ namespace easy_plot {
                     double y1 = get_y(raw_data_y[nl][i]);
                     double y2 = get_y(raw_data_y[nl][i + 1]);
                     if(is_use_mouse) {
-                        double diff_xy1 = std::abs(x1 - mouse_x) + std::abs(y1 - mouse_y);
-                        double diff_xy2 = std::abs(x2 - mouse_x) + std::abs(y2 - mouse_y);
-                        if(diff_xy1 < min_mouse_diff) {
+                        double distance_xy1 = std::abs(x1 - mouse_x) + std::abs(y1 - mouse_y);
+                        double distance_xy2 = std::abs(x2 - mouse_x) + std::abs(y2 - mouse_y);
+                        if(distance_xy1 < min_distance) {
                             mouse_data_x = raw_data_x[nl][i];
                             mouse_data_y = raw_data_y[nl][i];
                             indx_raw_data = nl;
                             real_mouse_x = x1;
                             real_mouse_y = y1;
-                            min_mouse_diff = diff_xy1;
+                            min_distance = distance_xy1;
                         }
-                        if(diff_xy2 < min_mouse_diff) {
+                        if(distance_xy2 < min_distance) {
                             mouse_data_x = raw_data_x[nl][i + 1];
                             mouse_data_y = raw_data_y[nl][i + 1];
                             indx_raw_data = nl;
                             real_mouse_x = x2;
                             real_mouse_y = y2;
-                            min_mouse_diff = diff_xy2;
+                            min_distance = distance_xy2;
                         }
                     }
                     glVertex2f(x1, y1);
@@ -541,10 +546,9 @@ namespace easy_plot {
             glMatrixMode(GL_PROJECTION); /*Настроим 2-х мерный вид*/
             glLoadIdentity();
 
-            double max_indent = window_style.indent + window_style.indent_frame;
             glOrtho(
                     -1.0 - window_style.indent, 1.0  + window_style.indent,
-                    -1.0 - max_indent, 1.0  + max_indent,
+                    -1.0 - window_style.indent, 1.0  + window_style.indent,
                     -1.0, 1.0);
             ::glutDisplayFunc(update_draw);
             ::glutCloseFunc(event_closing);
@@ -645,6 +649,30 @@ namespace easy_plot {
      * Функция графика отображает Y против X,
      * X и Y должны иметь одинаковую длину.
      * \param name имя окна
+     * \param wstyle стиль окна
+     * \param x вектор по оси X
+     * \param y вектор по оси Y
+     * \param style стиль линии
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    template <typename T1, typename T2>
+    int plot(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
+        if(x.size() != y.size()) return EASY_PLOT_INVALID_PARAMETR;
+        drawings_mutex.lock();
+        int pos = get_pos_plot(name);
+        if(pos >= 0) {
+            drawings[pos]->init(name, wstyle, x, y, style);
+        } else {
+            drawings.push_back(new Drawing(name, wstyle, x, y, style));
+        }
+        drawings_mutex.unlock();
+        return EASY_PLOT_OK;
+    }
+//------------------------------------------------------------------------------
+    /** \brief Создает двухмерный линейный график данных в Y по сравнению с соответствующими значениями в X.
+     * Функция графика отображает Y против X,
+     * X и Y должны иметь одинаковую длину.
+     * \param name имя окна
      * \param x вектор по оси X
      * \param y вектор по оси Y
      * \param style стиль линии
@@ -652,16 +680,7 @@ namespace easy_plot {
      */
     template <typename T1, typename T2>
     int plot(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
-        if(x.size() != y.size()) return EASY_PLOT_INVALID_PARAMETR;
-        drawings_mutex.lock();
-        int pos = get_pos_plot(name);
-        if(pos >= 0) {
-            drawings[pos]->init(name, default_window_style, x, y, style);
-        } else {
-            drawings.push_back(new Drawing(name, default_window_style, x, y, style));
-        }
-        drawings_mutex.unlock();
-        return EASY_PLOT_OK;
+        return plot(name, default_window_style, x, y, style);
     }
 //------------------------------------------------------------------------------
     /** \brief Создает двухмерный линейный график данных в Y по сравнению с индексом каждого значения.
