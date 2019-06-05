@@ -23,13 +23,14 @@
 				<Compiler>
 					<Add option="-O2" />
 					<Add option="-std=c++11" />
+					<Add option="-pg" />
 					<Add option="-DFREEGLUT_STATIC" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/include" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/lib/x64" />
 					<Add directory="../../include" />
 				</Compiler>
 				<Linker>
-					<Add option="-s" />
+					<Add option="-pg -lgmon" />
 					<Add library="freeglut_static" />
 					<Add library="opengl32" />
 					<Add library="winmm" />
@@ -43,7 +44,6 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="../../include/easy_plot.cpp" />
 		<Unit filename="../../include/easy_plot.hpp" />
 		<Unit filename="main.cpp" />
 		<Extensions>
