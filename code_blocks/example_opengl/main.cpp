@@ -5,13 +5,13 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    cout << "Hello world!" << endl;
     easy_plot::init(&argc, argv);
+    cout << "Hello world!" << endl;
 
-
-    std::vector<double> test1_x = {0,1,0,1,2,0,1};
-    easy_plot::plot("test1", test1_x);
-
+    easy_plot::WindowSpec wstyle0;
+    wstyle0.is_zero_x_line = true;
+    std::vector<double> test1_x = {1.2,1,1,1,1.2,1,1};
+    easy_plot::plot("test1", wstyle0, test1_x);
 
     std::vector<double> test2_x = {0,2,3,4,2,0,1};
     easy_plot::plot("test2", test2_x);

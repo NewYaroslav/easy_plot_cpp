@@ -14,9 +14,9 @@
 
 namespace easy_plot {
 //------------------------------------------------------------------------------
-    const int EASY_PLOT_DEF_WIDTH       = 480;  /**< Ширина по умолчанию */
-    const int EASY_PLOT_DEF_HEIGHT      = 240;  /**< Высота по умолчанию */
-    const double EASY_PLOT_DEF_INDENT   = 0.1;  /**< Размер отсутпа от границы окна */
+    static const int EASY_PLOT_DEF_WIDTH       = 480;  /**< Ширина по умолчанию */
+    static const int EASY_PLOT_DEF_HEIGHT      = 240;  /**< Высота по умолчанию */
+    static const double EASY_PLOT_DEF_INDENT   = 0.1;  /**< Размер отсутпа от границы окна */
 //------------------------------------------------------------------------------
     enum TypesErrors {
         EASY_PLOT_OK = 0,               ///< Ошибок нет
@@ -34,9 +34,10 @@ namespace easy_plot {
      */
     class WindowSpec {
         public:
-        int width = EASY_PLOT_DEF_WIDTH;        /**< Шириная окна графика */
-        int height = EASY_PLOT_DEF_HEIGHT;      /**< Высота окна графика */
-        double indent = EASY_PLOT_DEF_INDENT;   /**< Отступ от края окна */
+        int width = EASY_PLOT_DEF_WIDTH;            /**< Шириная окна графика */
+        int height = EASY_PLOT_DEF_HEIGHT;          /**< Высота окна графика */
+        double indent = EASY_PLOT_DEF_INDENT;       /**< Отступ от края окна */
+        double indent_frame = EASY_PLOT_DEF_INDENT; /**< Отступ от края рамки */
         //@{
         /** цвет фона (R G B) */
         double br = 0.0, bg = 0.0, bb = 0.0;
@@ -99,7 +100,9 @@ namespace easy_plot {
     };
 //------------------------------------------------------------------------------
     class Drawing;
-    static std::vector<Drawing*> drawings;
+    static std::vector<Drawing*> drawings;              /**< Список окон для отрисовки граиков */
+    static int window_screen_x = 0;                     /**< Положение окон по умолчанию */
+    static int window_screen_y = 0;                     /**< Положение окон по умолчанию */
 //------------------------------------------------------------------------------
     /** \brief Класс для отрисовки графиков
      */
@@ -195,6 +198,16 @@ namespace easy_plot {
             }
         }
 
+        double convert_pixel_to_relative_len(int value, int size) {
+            const double max_len = 2.0 + window_style.indent * 2.0;
+            return ((double)value / (double) size) * max_len;
+        }
+
+        double convert_pixel_to_relative(int value, int size) {
+            const double max_len = 2.0 + window_style.indent * 2.0;
+            return ((double)value / (double) size) * max_len - max_len / 2.0;
+        }
+
         public:
         static Drawing* current_instance;       /**< Указатель на класс */
         std::string window_name;                /**< Имя окна графика */
@@ -215,10 +228,8 @@ namespace easy_plot {
          */
         void set_mouse_position(int x, int y) {
             if(width == 0 || height == 0) return;
-            double max_len = 2.0 + window_style.indent * 2.0;
-            mouse_x = ((double)x / (double) width) * max_len - max_len / 2.0;
-            mouse_y = ((double)y / (double) height) * max_len - max_len / 2.0;
-            is_use_mouse = true;
+            mouse_x = convert_pixel_to_relative(x, width);
+            mouse_y = convert_pixel_to_relative(height - y, height);
         }
 
         /** \brief Закрыть окно
@@ -265,8 +276,9 @@ namespace easy_plot {
             window_name = name;
             window_style = wstyle;
             line_style = styles;
+            if(wstyle.is_zero_x_line && min_y >= 0.0) min_y = -1.0;
             is_raw_data = true;
-            if(is_window_init) glutPostRedisplay(); //is_redraw = true;
+            if(is_window_init) glutPostRedisplay();
         }
 
         /** \brief Инициализация графика
@@ -351,22 +363,52 @@ namespace easy_plot {
                     glVertex2f(1, y);
                 }
             }
+
+            double min_mouse_diff = 4.0 + 4.0 * window_style.indent;
+            double real_mouse_x = 0.0, real_mouse_y = 0.0;
+            double mouse_data_x = 0.0;
+            double mouse_data_y = 0.0;
+            int indx_raw_data = 0;
             // рисуем график
             for(size_t nl = 0; nl < line_style.size(); ++nl) {
                 glColor3f(line_style[nl].r, line_style[nl].g, line_style[nl].b);
                 for(size_t i = 0; i < raw_data_y[nl].size() - 1; ++i) {
-                    glVertex2f(get_x(raw_data_x[nl][i]), get_y(raw_data_y[nl][i]));
-                    glVertex2f(get_x(raw_data_x[nl][i + 1]), get_y(raw_data_y[nl][i + 1]));
+                    double x1 = get_x(raw_data_x[nl][i]);
+                    double x2 = get_x(raw_data_x[nl][i + 1]);
+                    double y1 = get_y(raw_data_y[nl][i]);
+                    double y2 = get_y(raw_data_y[nl][i + 1]);
+                    if(is_use_mouse) {
+                        double diff_xy1 = std::abs(x1 - mouse_x) + std::abs(y1 - mouse_y);
+                        double diff_xy2 = std::abs(x2 - mouse_x) + std::abs(y2 - mouse_y);
+                        if(diff_xy1 < min_mouse_diff) {
+                            mouse_data_x = raw_data_x[nl][i];
+                            mouse_data_y = raw_data_y[nl][i];
+                            indx_raw_data = nl;
+                            real_mouse_x = x1;
+                            real_mouse_y = y1;
+                            min_mouse_diff = diff_xy1;
+                        }
+                        if(diff_xy2 < min_mouse_diff) {
+                            mouse_data_x = raw_data_x[nl][i + 1];
+                            mouse_data_y = raw_data_y[nl][i + 1];
+                            indx_raw_data = nl;
+                            real_mouse_x = x2;
+                            real_mouse_y = y2;
+                            min_mouse_diff = diff_xy2;
+                        }
+                    }
+                    glVertex2f(x1, y1);
+                    glVertex2f(x2, y2);
                 }
             }
 
             // рисуем мышь
             if(is_use_mouse) {
                 glColor3f(window_style.mr, window_style.mg, window_style.mb);
-                glVertex2f(-1, mouse_y);
-                glVertex2f(1, mouse_y);
-                glVertex2f(mouse_x, -1);
-                glVertex2f(mouse_x, 1);
+                glVertex2f(-1, real_mouse_y);
+                glVertex2f(1, real_mouse_y);
+                glVertex2f(real_mouse_x, -1);
+                glVertex2f(real_mouse_x, 1);
             }
 
             // рисуем рамку
@@ -384,12 +426,25 @@ namespace easy_plot {
             glVertex2f(-1, 1);
 
             glEnd();
+
+            if(is_use_mouse) {
+                std::string text_line = "line " + std::to_string(indx_raw_data);
+                std::string text_x = std::to_string(mouse_data_x);
+                std::string text_y = std::to_string(mouse_data_y);
+                glColor3f(window_style.tr, window_style.tg, window_style.tb);
+                const double dh = convert_pixel_to_relative_len(glutBitmapHeight(window_style.font), height);
+                const double OFFSET_Y = 0.01;
+                render_spaced_bitmap_string(real_mouse_x, real_mouse_y + dh * 2 + OFFSET_Y, 0.0, window_style.font, text_line);
+                render_spaced_bitmap_string(real_mouse_x, real_mouse_y + dh + OFFSET_Y, 0.0, window_style.font, text_x);
+                render_spaced_bitmap_string(real_mouse_x, real_mouse_y + OFFSET_Y, 0.0, window_style.font, text_y);
+            }
+
             glFlush();
         }
 
         /** \brief Обработчик перерисовки экрана
          */
-        static void update() {
+        static void update_draw() {
             int win_id = glutGetWindow();
             for(size_t i = 0; i < drawings.size(); ++i) {
                 if(drawings[i]->win_id == win_id) {
@@ -419,10 +474,23 @@ namespace easy_plot {
             for(size_t i = 0; i < drawings.size(); ++i) {
                 if(drawings[i]->win_id == win_id) {
                     drawings[i]->set_mouse_position(x, y);
-                } else {
-                    drawings[i]->is_use_mouse = false;
+                    break;
                 }
             }
+            //glutPostRedisplay();
+        }
+
+        /** \brief Событие входа или выхода мыши из текущего окна
+         */
+        static void event_entry(int state) {
+            int win_id = glutGetWindow();
+            for(size_t i = 0; i < drawings.size(); ++i) {
+                if(drawings[i]->win_id == win_id) {
+                    drawings[i]->is_use_mouse = state == GLUT_ENTERED ? true : false;
+                    break;
+                }
+            }
+            glutPostRedisplay();
         }
 
         /** \brief Обработчик изменения размера окна
@@ -433,6 +501,7 @@ namespace easy_plot {
                 if(drawings[i]->win_id == win_id) {
                     drawings[i]->width = width;
                     drawings[i]->height = height;
+                    glViewport(0, 0, width, height);
                     break;
                 }
             }
@@ -449,7 +518,22 @@ namespace easy_plot {
             glutInitWindowSize(
                     window_style.width,
                     window_style.height);
-            glutInitWindowPosition(0, 0);
+            // узнаем размеры экрана
+            int screen_w = glutGet(GLUT_SCREEN_WIDTH);
+            int screen_h = glutGet(GLUT_SCREEN_HEIGHT);
+            const int OFFSET_W = 16;
+            const int OFFSET_H = 44;
+            // проверяем, вписываемся ли мы в монитор
+            if((window_screen_x + window_style.width + OFFSET_W) > screen_w) {
+                window_screen_x = 0;
+                window_screen_y += (window_style.height + OFFSET_H);
+                if((window_screen_y + window_style.height + OFFSET_H) > screen_h) {
+                    window_screen_y = 0;
+                }
+            }
+            glutInitWindowPosition(window_screen_x, window_screen_y);
+            window_screen_x += (window_style.width + OFFSET_W);
+
             win_id = glutCreateWindow(window_name.c_str());
             glutSetWindow(win_id);
 
@@ -457,14 +541,16 @@ namespace easy_plot {
             glMatrixMode(GL_PROJECTION); /*Настроим 2-х мерный вид*/
             glLoadIdentity();
 
+            double max_indent = window_style.indent + window_style.indent_frame;
             glOrtho(
                     -1.0 - window_style.indent, 1.0  + window_style.indent,
-                    -1.0 - window_style.indent, 1.0  + window_style.indent,
+                    -1.0 - max_indent, 1.0  + max_indent,
                     -1.0, 1.0);
-            ::glutDisplayFunc(update);
+            ::glutDisplayFunc(update_draw);
             ::glutCloseFunc(event_closing);
             ::glutReshapeFunc(event_reshape);
-            ::glutMotionFunc(event_mouse_move);
+            ::glutPassiveMotionFunc(event_mouse_move);
+            ::glutEntryFunc(event_entry);
             glutMainLoopEvent();
             is_window_init = true;
         }
@@ -477,7 +563,7 @@ namespace easy_plot {
      * \param argv
      */
     void init(int *argc, char *argv[]) {
-        std::thread glut_thread([&]() {
+        std::thread glut_thread([&, argc, argv]() {
             // инициализируем FREEGLUT
             glutInit(argc, argv);
             // чтобы можно было закрывать окна
@@ -580,26 +666,38 @@ namespace easy_plot {
 //------------------------------------------------------------------------------
     /** \brief Создает двухмерный линейный график данных в Y по сравнению с индексом каждого значения.
      * \param name имя окна
+     * \param wstyle стиль окна
      * \param y вектор по оси Y
      * \param style стиль линии
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1>
-    int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
+    int plot(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style = LineSpec()) {
         if(y.size() <= 1)
             return EASY_PLOT_INVALID_PARAMETR;
 
         drawings_mutex.lock();
         int pos = get_pos_plot(name);
         if(pos >= 0) {
-            drawings[pos]->init(name, default_window_style, y, style);
+            drawings[pos]->init(name, wstyle, y, style);
         } else {
-            std::cout << "push_back" << std::endl;
-            drawings.push_back(new Drawing(name, default_window_style, y, style));
-            std::cout << "push_back 2" << std::endl;
+            //std::cout << "push_back" << std::endl;
+            drawings.push_back(new Drawing(name, wstyle, y, style));
+            //std::cout << "push_back 2" << std::endl;
         }
         drawings_mutex.unlock();
         return EASY_PLOT_OK;
+    }
+//------------------------------------------------------------------------------
+    /** \brief Создает двухмерный линейный график данных в Y по сравнению с индексом каждого значения.
+     * \param name имя окна
+     * \param y вектор по оси Y
+     * \param style стиль линии
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    template <typename T1>
+    int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
+        return plot(name, default_window_style, y, style);
     }
 //------------------------------------------------------------------------------
 }
