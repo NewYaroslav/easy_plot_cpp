@@ -10,18 +10,29 @@
 #include <stdarg.h>
 #include <numeric>
 
-#include <iostream>
-
 namespace easy_plot {
 //------------------------------------------------------------------------------
     static const int EASY_PLOT_DEF_WIDTH       = 480;  /**< Ширина по умолчанию */
     static const int EASY_PLOT_DEF_HEIGHT      = 240;  /**< Высота по умолчанию */
     static const double EASY_PLOT_DEF_INDENT   = 0.1;  /**< Размер отсутпа от границы окна */
+
+    static GLubyte *pixels = NULL;
 //------------------------------------------------------------------------------
     enum TypesErrors {
         EASY_PLOT_OK = 0,               ///< Ошибок нет
         EASY_PLOT_INVALID_PARAMETR = 1, ///< Неверно указан параметр
     };
+//------------------------------------------------------------------------------
+    class MainPainter {
+    public:
+        ~MainPainter() {
+            if(pixels != NULL) {
+                free(pixels);
+            }
+        }
+    };
+//------------------------------------------------------------------------------
+    static MainPainter painter;
 //------------------------------------------------------------------------------
     /** \brief Класс для хранения данных стиля окна
      */
@@ -214,6 +225,9 @@ namespace easy_plot {
         double mouse_x = 0.0, mouse_y = 0.0;
         //@}
         bool is_use_mouse = false;              /**< Флаг использования мыши в окне */
+
+        std::string save_image_name;            /**< Имя файла для сохранения изображения */
+        bool is_save_image = false;             /**< Флаг сохранения изображения */
 
         /** \brief Установить позицию мыши
          * \param x координаты по оси X
@@ -438,6 +452,11 @@ namespace easy_plot {
             }
 
             glFlush();
+
+            if(is_save_image) {
+                screenshot_ppm(save_image_name.c_str(), width, height, &pixels);
+                is_save_image = false;
+            }
         }
 
         /** \brief Обработчик перерисовки экрана
@@ -508,6 +527,9 @@ namespace easy_plot {
         /** \brief Обновить состояние окна
          */
         void update_window() {
+            if(is_save_image) {
+                glutPostRedisplay();
+            }
             if(is_window_init) {
                 glutMainLoopEvent();
                 return;
@@ -550,6 +572,27 @@ namespace easy_plot {
             ::glutEntryFunc(event_entry);
             glutMainLoopEvent();
             is_window_init = true;
+        }
+
+        static void screenshot_ppm(
+            const char *filename,
+            unsigned int width,
+            unsigned int height,
+            GLubyte **pixels) {
+                size_t i, j, cur;
+                const size_t format_nchannels = 3;
+                FILE *f = fopen(filename, "w");
+                fprintf(f, "P3\n%d %d\n%d\n", width, height, 255);
+                *pixels = (GLubyte*)realloc(*pixels, format_nchannels * sizeof(GLubyte) * width * height);
+                glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, *pixels);
+                for (i = 0; i < height; i++) {
+                    for (j = 0; j < width; j++) {
+                        cur = format_nchannels * ((height - i - 1) * width + j);
+                        fprintf(f, "%3d %3d %3d ", (*pixels)[cur], (*pixels)[cur + 1], (*pixels)[cur + 2]);
+                    }
+                    fprintf(f, "\n");
+                }
+                fclose(f);
         }
     };
 //------------------------------------------------------------------------------
@@ -693,6 +736,21 @@ namespace easy_plot {
     template <typename T1>
     int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
         return plot(name, default_window_style, y, style);
+    }
+//------------------------------------------------------------------------------
+    /** \brief Сохранить изображение
+     * \param window_name имя окна, которое необходимо сохранить
+     * \param file_name имя файла изображения
+     */
+    void save_image(std::string window_name, std::string file_name) {
+        drawings_mutex.lock();
+        int pos = get_pos_plot(window_name);
+        if(pos >= 0) {
+            drawings[pos]->save_image_name = file_name;
+            drawings[pos]->is_save_image = true;
+            //glutPostRedisplay();
+        }
+        drawings_mutex.unlock();
     }
 //------------------------------------------------------------------------------
 }

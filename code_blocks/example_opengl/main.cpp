@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 
     easy_plot::WindowSpec wstyle;
     easy_plot::plot<double>("test4", wstyle, (int)3, test1_x, easy_plot::LineSpec(1,0,0), test2_x, easy_plot::LineSpec(1,0,1), test3_x, easy_plot::LineSpec(0,1,0));
-
+    easy_plot::save_image("test4", "test4.ppm");
 
     std::vector<double> line;
     for(int i = 0; i < 500; ++i) {
@@ -50,6 +50,8 @@ int main(int argc, char* argv[]) {
         line, easy_plot::LineSpec(1,0,0),
         line05, easy_plot::LineSpec(1,0,1),
         line06, easy_plot::LineSpec(0,1,0));
+
+    easy_plot::save_image("test5", "test5.ppm");
 
     wstyle2.is_zero_x_line = true;
     // увеличим выборку и будем перерисовывать график некоторое время
