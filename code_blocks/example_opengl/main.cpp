@@ -6,7 +6,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     easy_plot::init(&argc, argv);
-    cout << "Hello world!" << endl;
+    //cout << "Hello world!" << endl;
 
     easy_plot::WindowSpec wstyle0;
     wstyle0.is_zero_x_line = true;
@@ -23,6 +23,17 @@ int main(int argc, char* argv[]) {
     wstyle3.is_zero_y_line = true;
     std::vector<double> test3_x = {-2,2,6,7,8,10,12};
     easy_plot::plot("test3", wstyle3, test3_x, test2_x, easy_plot::LineSpec(1,1,0));
+
+
+    std::vector<double> test1_xx;
+    for(int i = 0; i < 2000; ++i) {
+        test1_xx.push_back(i%53);
+    }
+    easy_plot::WindowSpec wstyle_xx;
+    easy_plot::plot<double>("test1-1", wstyle_xx, (int)1, test1_xx, easy_plot::LineSpec(1,0,0));
+    easy_plot::plot<double>("test1-2", wstyle_xx, (int)1, test1_xx, easy_plot::LineSpec(0,1,0));
+    easy_plot::plot<double>("test1-3", wstyle_xx, (int)1, test1_xx, easy_plot::LineSpec(0,0,1));
+    easy_plot::plot<double>("test1-4", wstyle_xx, (int)1, test1_xx, easy_plot::LineSpec(0,1,1));
 
     easy_plot::WindowSpec wstyle;
     easy_plot::plot<double>("test4", wstyle, (int)3, test1_x, easy_plot::LineSpec(1,0,0), test2_x, easy_plot::LineSpec(1,0,1), test3_x, easy_plot::LineSpec(0,1,0));

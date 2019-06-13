@@ -623,21 +623,6 @@ namespace easy_plot {
         return EASY_PLOT_OK;
     }
 //------------------------------------------------------------------------------
-    /** \brief Cтроит несколько графиков, используя одинаковые оси для всех линий
-     * \param name имя окна
-     * \param count количество векторов и стилей
-     * \param ... перечисление векторов и стилей по порядку (y2, style2, y3, style2 и т.д.)
-     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
-     */
-    template <typename T1>
-    int plot(std::string name, int count, ...) {
-        va_list args;
-        va_start(args, count);
-        int err = plot<T1>(name, default_window_style, count, args);
-        va_end(args);
-        return err;
-    }
-//------------------------------------------------------------------------------
     /** \brief Создает двухмерный линейный график данных в Y по сравнению с соответствующими значениями в X.
      * Функция графика отображает Y против X,
      * X и Y должны иметь одинаковую длину.
@@ -693,9 +678,7 @@ namespace easy_plot {
         if(pos >= 0) {
             drawings[pos]->init(name, wstyle, y, style);
         } else {
-            //std::cout << "push_back" << std::endl;
             drawings.push_back(new Drawing(name, wstyle, y, style));
-            //std::cout << "push_back 2" << std::endl;
         }
         drawings_mutex.unlock();
         return EASY_PLOT_OK;
