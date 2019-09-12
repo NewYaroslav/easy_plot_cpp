@@ -16,13 +16,15 @@ namespace easy_plot {
     static const int EASY_PLOT_DEF_HEIGHT      = 240;  /**< Высота по умолчанию */
     static const double EASY_PLOT_DEF_INDENT   = 0.1;  /**< Размер отсутпа от границы окна */
 
-    static GLubyte *pixels = NULL;
+    static GLubyte *pixels = NULL;                     /**< Необходимо для создания файлов изображений */
 //------------------------------------------------------------------------------
     enum TypesErrors {
         EASY_PLOT_OK = 0,               ///< Ошибок нет
         EASY_PLOT_INVALID_PARAMETR = 1, ///< Неверно указан параметр
     };
 //------------------------------------------------------------------------------
+    /** \brief Класс нужен для очистки памяти pixels
+     */
     class MainPainter {
     public:
         ~MainPainter() {
@@ -104,7 +106,7 @@ namespace easy_plot {
     };
 //------------------------------------------------------------------------------
     class Drawing;
-    static std::vector<Drawing*> drawings;              /**< Список окон для отрисовки граиков */
+    static std::vector<std::shared_ptr<Drawing>> drawings;              /**< Список окон для отрисовки граиков */
     static int window_screen_x = 0;                     /**< Положение окон по умолчанию */
     static int window_screen_y = 0;                     /**< Положение окон по умолчанию */
 //------------------------------------------------------------------------------
@@ -202,11 +204,23 @@ namespace easy_plot {
             }
         }
 
+        /** \brief Преобразовать пиксели в относительное расстояние
+         * Данная функция нужна для отрисовки текста возле курсора мыши
+         * \param value Значение в пикселях
+         * \param size Максимальное количество пикселей
+         * \return относительное расстояние
+         */
         double convert_pixel_to_relative_len(int value, int size) {
             const double max_len = 2.0 + window_style.indent * 2.0;
             return ((double)value / (double) size) * max_len;
         }
 
+        /** \brief Преобразовать пиксели в относительное расстояние
+         * Данная функция нужна для получения положения курсора мыши
+         * \param value Значение в пикселях
+         * \param size Максимальное количество пикселей
+         * \return относительное расстояние
+         */
         double convert_pixel_to_relative(int value, int size) {
             const double max_len = 2.0 + window_style.indent * 2.0;
             return ((double)value / (double) size) * max_len - max_len / 2.0;
@@ -280,6 +294,7 @@ namespace easy_plot {
                     min_x = std::min((double)x[i][j], min_x);
                 } // for j
             } // for i
+
             window_name = name;
             window_style = wstyle;
             line_style = styles;
@@ -353,7 +368,10 @@ namespace easy_plot {
         void draw() {
             if(!is_raw_data) return;
             glClear(GL_COLOR_BUFFER_BIT);
-            glBegin(GL_LINES);//начало рисования линий
+            //начало рисования линий
+            glBegin(GL_LINES);
+
+            // рисуем сетку
             if(window_style.is_grid && window_style.grid_period != 0.0) {
                 glColor3f(window_style.gr, window_style.gg, window_style.gb);
                 for(double x = -1.0; x < 1.0; x += window_style.grid_period) {
@@ -365,22 +383,28 @@ namespace easy_plot {
                     glVertex2f(1, y);
                 }
             }
+
+            // рисуем линию нуля по оси X
             if(window_style.is_zero_x_line) {
                 glColor3f(window_style.fr, window_style.fg, window_style.fb);
                 glVertex2f(-1, get_y(0));
                 glVertex2f(1, get_y(0));
             }
+            // рисуем линию нуля по оси Y
             if(window_style.is_zero_y_line) {
                 glColor3f(window_style.fr, window_style.fg, window_style.fb);
                 glVertex2f(get_x(0), -1);
                 glVertex2f(get_x(0), 1);
             }
 
+            // для поиска минимальной дистнации до курсора мыши
             double min_distance = 4.0 + 4.0 * window_style.indent;
+
             double real_mouse_x = 0.0, real_mouse_y = 0.0;
             double mouse_data_x = 0.0;
             double mouse_data_y = 0.0;
             int indx_raw_data = 0;
+
             // рисуем график
             for(size_t nl = 0; nl < line_style.size(); ++nl) {
                 glColor3f(line_style[nl].r, line_style[nl].g, line_style[nl].b);
@@ -439,6 +463,7 @@ namespace easy_plot {
 
             glEnd();
 
+            // если естьмышь, отобразим линию
             if(is_use_mouse) {
                 std::string text_line = "line " + std::to_string(indx_raw_data);
                 std::string text_x = std::to_string(mouse_data_x);
@@ -660,7 +685,7 @@ namespace easy_plot {
         if(pos >= 0) {
             drawings[pos]->init(name, wstyle, data, line_style);
         } else {
-            drawings.push_back(new Drawing(name, wstyle, data, line_style));
+            drawings.push_back(std::make_shared<Drawing>(name, wstyle, data, line_style));
         }
         drawings_mutex.unlock();
         return EASY_PLOT_OK;
@@ -684,7 +709,7 @@ namespace easy_plot {
         if(pos >= 0) {
             drawings[pos]->init(name, wstyle, x, y, style);
         } else {
-            drawings.push_back(new Drawing(name, wstyle, x, y, style));
+            drawings.push_back(std::make_shared<Drawing>(name, wstyle, x, y, style));
         }
         drawings_mutex.unlock();
         return EASY_PLOT_OK;
@@ -721,7 +746,7 @@ namespace easy_plot {
         if(pos >= 0) {
             drawings[pos]->init(name, wstyle, y, style);
         } else {
-            drawings.push_back(new Drawing(name, wstyle, y, style));
+            drawings.push_back(std::make_shared<Drawing>(name, wstyle, y, style));
         }
         drawings_mutex.unlock();
         return EASY_PLOT_OK;
