@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <future>
 #include <atomic>
 #include <mutex>
 #include <stdarg.h>
@@ -622,13 +623,15 @@ namespace easy_plot {
     };
 //------------------------------------------------------------------------------
     static std::mutex drawings_mutex;
+    static std::future<void> drawings_future;
 //------------------------------------------------------------------------------
     /** \brief Инициализировать работу с графиками
-     * \param argc
-     * \param argv
+     * \param argc аргумент командной строки
+     * \param argv аргумент командной строки
      */
     void init(int *argc, char *argv[]) {
-        std::thread glut_thread([&, argc, argv]() {
+        drawings_future = std::async(std::launch::async,[&, argc, argv]() {
+        //std::thread glut_thread([&, argc, argv]() {
             // инициализируем FREEGLUT
             glutInit(argc, argv);
             // чтобы можно было закрывать окна
@@ -648,7 +651,7 @@ namespace easy_plot {
                 std::this_thread::yield();
             }
         });
-        glut_thread.detach();
+        //glut_thread.detach();
     }
 //------------------------------------------------------------------------------
     int get_pos_plot(std::string name) {

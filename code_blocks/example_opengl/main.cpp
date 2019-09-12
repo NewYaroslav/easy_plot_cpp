@@ -6,7 +6,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     easy_plot::init(&argc, argv);
-    //cout << "Hello world!" << endl;
+    cout << "Hello plot!" << endl;
 
     easy_plot::WindowSpec wstyle0;
     wstyle0.is_zero_x_line = true;
