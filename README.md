@@ -6,6 +6,7 @@
 Данная *header-only* библиотека позволяет рисовать простые графики или тепловые карты сразу из программы.
 
 Пример:
+
 ![example_0 example](img/example_0.png)
 ![example_heat_map](img/example_heat_map.png)![example_monochrome_image](img/example_monochrome_image.png)
 
@@ -67,18 +68,16 @@ int main(int argc, char* argv[]) {
     image_wstyle.is_grid = true;
     image_wstyle.height = 320;
     image_wstyle.width = 320;
-    float image_data[32*32] = {};
+    float image_data[32][32] = {};
     size_t image_ind = 0;
     for(size_t x = 0 ; x < 32; ++x) {
         for(size_t y = 0; y < 32; ++y, ++image_ind) {
-            image_data[image_ind] = 1024 - std::sqrt((x - 15) * (x - 15) + (y - 15) * (y - 15));
+            image_data[x][y] = 1024 - std::sqrt((x - 18) * (x - 18) + (y - 18) * (y - 18));
         }
     }
 
-    image_wstyle.is_heat_map = false;
-    easy_plot::draw_image("image_test", image_wstyle, image_data, 32, 32);
-    image_wstyle.is_heat_map = true;
-    easy_plot::draw_image("image_heat_map", image_wstyle, image_data, 32, 32);
+    image_wstyle.is_color_heatmap = true;
+    easy_plot::draw_heatmap("image_heatmap", image_wstyle, &image_data[0][0], 32, 32);
 
     while(true) {
         std::this_thread::yield();

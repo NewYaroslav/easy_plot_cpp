@@ -122,7 +122,7 @@ namespace easy_plot {
         bool is_zero_x_line = false;            /**< Линия нуля, если true то линия рисуется */
         bool is_zero_y_line = false;            /**< Линия нуля, если true то линия рисуется */
         bool is_grid = true;                    /**< Использовать сетку */
-        bool is_heat_map = true;                /**< Использовать тепловую карту вместо монохромнорго изображения */
+        bool is_color_heatmap = true;           /**< Использовать цветную тепловую карту вместо черно-белой */
         double grid_period = 0.1;               /**< Период сетки */
         void *font = GLUT_BITMAP_8_BY_13;       /**< Шрифт текста */
 
@@ -212,7 +212,7 @@ namespace easy_plot {
          * \param size размер массива
          * \return данные оси X
          */
-        std::vector<std::vector<int>> get_x_axis_values(size_t size) {
+        std::vector<std::vector<int>> get_x_axis_values_for_size(const size_t size) {
             std::vector<int> x(size);
             std::iota(std::begin(x), std::end(x), 0);
             std::vector<std::vector<int>> temp;
@@ -225,7 +225,7 @@ namespace easy_plot {
          * \return данные оси X
          */
         template<typename T1>
-        std::vector<std::vector<int>> get_x_axis_values(std::vector<std::vector<T1>> & data) {
+        std::vector<std::vector<int>> get_x_axis_values(const std::vector<std::vector<T1>> & data) {
             std::vector<std::vector<int>> temp(data.size());
             for(size_t  i = 0; i < data.size(); ++i) {
                 temp[i].resize(data[i].size());
@@ -236,14 +236,14 @@ namespace easy_plot {
         }
 
         template<typename T1>
-        std::vector<std::vector<T1>> get_axis_values(std::vector<T1> &data) {
+        std::vector<std::vector<T1>> get_axis_values(const std::vector<T1> &data) {
             std::vector<std::vector<T1>> temp;
             temp.push_back(data);
             return temp;
         }
 
         template<typename T1>
-        std::vector<T1> get_style_values(T1 &data) {
+        std::vector<T1> get_style_values(const T1 &data) {
             std::vector<T1> temp;
             temp.push_back(data);
             return temp;
@@ -333,7 +333,7 @@ namespace easy_plot {
          * \param styles стили линий
          */
         template <typename T1, typename T2>
-        void init(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &x, std::vector<std::vector<T2>> &y, std::vector<LineSpec> &styles) {
+        void init(const std::string &name, const WindowSpec &wstyle, const std::vector<std::vector<T1>> &x, const std::vector<std::vector<T2>> &y, const std::vector<LineSpec> &styles) {
             is_raw_data = false;
             is_draw_image = false;
             if(x.size() != y.size() || styles.size() != y.size() || name == "" || x[0].size() == 0 || y[0].size() == 0) return;
@@ -379,15 +379,15 @@ namespace easy_plot {
          * \param style стиль линии
          */
         template <typename T1>
-        void init(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style) {
+        void init(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &y, const LineSpec &style) {
             std::vector<LineSpec> vstyle = get_style_values(style);
-            std::vector<std::vector<int>> vx = get_x_axis_values(y.size());
+            std::vector<std::vector<int>> vx = get_x_axis_values_for_size(y.size());
             std::vector<std::vector<T1>> vy = get_axis_values(y);
             init(name, wstyle, vx, vy, vstyle);
         }
 
         template <typename T1>
-        Drawing(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style) {
+        Drawing(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &y, const LineSpec &style) {
             init(name, wstyle, y, style);
         };
 
@@ -399,7 +399,7 @@ namespace easy_plot {
          * \param style стиль линии
          */
         template <typename T1, typename T2>
-        void init(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
+        void init(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &x, const std::vector<T2> &y, const LineSpec &style) {
             std::vector<LineSpec> vstyle = get_style_values(style);
             std::vector<std::vector<T1>> vx = get_axis_values(x);
             std::vector<std::vector<T2>> vy = get_axis_values(y);
@@ -407,7 +407,7 @@ namespace easy_plot {
         }
 
         template <typename T1, typename T2>
-        Drawing(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style) {
+        Drawing(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &x, const std::vector<T2> &y, const LineSpec &style) {
             init(name, wstyle, x, y, style);
         };
 
@@ -417,13 +417,13 @@ namespace easy_plot {
          * \param style стиль линии
          */
         template <typename T1>
-        void init(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &styles) {
+        void init(const std::string &name, const WindowSpec &wstyle, const std::vector<std::vector<T1>> &vec, const std::vector<LineSpec> &styles) {
             std::vector<std::vector<int>> vx = get_x_axis_values(vec);
             init(name, wstyle, vx, vec, styles);
         }
 
         template <typename T1>
-        Drawing(std::string name, WindowSpec wstyle, std::vector<std::vector<T1>> &vec, std::vector<LineSpec> &styles) {
+        Drawing(const std::string &name, const WindowSpec &wstyle, const std::vector<std::vector<T1>> &vec, const std::vector<LineSpec> &styles) {
             init(name, wstyle, vec, styles);
         };
 
@@ -434,7 +434,7 @@ namespace easy_plot {
          * \param width ширина изображения
          * \param height высота изображения
          */
-        void init(const std::string &name, const WindowSpec &wstyle, float *image_data, const size_t width, const size_t height) {
+        void init(const std::string &name, const WindowSpec &wstyle, const float *image_data, const size_t width, const size_t height) {
             is_raw_data = false;
             is_draw_image = false;
             if(name == "" || width == 0 || height == 0) return;
@@ -477,7 +477,7 @@ namespace easy_plot {
          * \param width ширина изображения
          * \param height высота изображения
          */
-        Drawing(const std::string &name, const WindowSpec &wstyle, float *image_data, const size_t width, const size_t height) {
+        Drawing(const std::string &name, const WindowSpec &wstyle, const float *image_data, const size_t width, const size_t height) {
             init(name, wstyle, image_data, width, height);
         };
 
@@ -582,7 +582,7 @@ namespace easy_plot {
                         double y2 = 1.0 - (double)y * step_y;
                         double y1 = y2 - step_y;
 
-                        if(!window_style.is_heat_map) {
+                        if(!window_style.is_color_heatmap) {
                             glColor3f(
                                 window_style.ir * scale_image_data[image_ind],
                                 window_style.ig * scale_image_data[image_ind],
@@ -877,7 +877,7 @@ namespace easy_plot {
         //glut_thread.detach();
     }
 //------------------------------------------------------------------------------
-    int get_pos_plot(std::string name) {
+    int get_pos_plot(const std::string &name) {
         for(size_t i = 0; i < drawings.size(); ++i) {
             if(drawings[i]->window_name == name) return i;
         }
@@ -892,13 +892,13 @@ namespace easy_plot {
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1>
-    int plot(std::string name, WindowSpec wstyle, int count, ...) {
+    int plot(const std::string &name, const WindowSpec &wstyle, const size_t count, ...) {
         va_list va;
         va_start(va, count);
 
         std::vector<std::vector<T1>> data;
         std::vector<LineSpec> line_style;
-        for(int n = 0; n < count; ++n) {
+        for(size_t n = 0; n < count; ++n) {
             std::vector<T1> *vec_next = va_arg(va, std::vector<T1> *);
             LineSpec *style_next = va_arg(va, LineSpec *);
             data.push_back(*vec_next);
@@ -928,7 +928,7 @@ namespace easy_plot {
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1, typename T2>
-    int plot(std::string name, WindowSpec wstyle, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
+    int plot(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &x, const std::vector<T2> &y, const LineSpec &style = LineSpec()) {
         if(x.size() != y.size()) return EASY_PLOT_INVALID_PARAMETR;
         drawings_mutex.lock();
         int pos = get_pos_plot(name);
@@ -951,7 +951,7 @@ namespace easy_plot {
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1, typename T2>
-    int plot(std::string name, std::vector<T1> &x, std::vector<T2> &y, LineSpec style = LineSpec()) {
+    int plot(const std::string &name, const std::vector<T1> &x, const std::vector<T2> &y, const LineSpec &style = LineSpec()) {
         return plot(name, default_window_style, x, y, style);
     }
 //------------------------------------------------------------------------------
@@ -963,7 +963,7 @@ namespace easy_plot {
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1>
-    int plot(std::string name, WindowSpec wstyle, std::vector<T1> &y, LineSpec style = LineSpec()) {
+    int plot(const std::string &name, const WindowSpec &wstyle, const std::vector<T1> &y, const LineSpec &style = LineSpec()) {
         if(y.size() <= 1) return EASY_PLOT_INVALID_PARAMETR;
         drawings_mutex.lock();
         int pos = get_pos_plot(name);
@@ -983,7 +983,7 @@ namespace easy_plot {
      * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
      */
     template <typename T1>
-    int plot(std::string name, std::vector<T1> &y, LineSpec style = LineSpec()) {
+    int plot(const std::string &name, const std::vector<T1> &y, const LineSpec &style = LineSpec()) {
         return plot(name, default_window_style, y, style);
     }
 //------------------------------------------------------------------------------
@@ -1001,7 +1001,18 @@ namespace easy_plot {
         drawings_mutex.unlock();
     }
 //------------------------------------------------------------------------------
-    int draw_image(const std::string &name, const WindowSpec &wstyle, float* image, size_t width, size_t height) {
+    /** \brief Нарисовать тепловую карту
+     * Для тепловой карты точка 0:0 находится в левом верхнем углу.
+     * Функция рисования проходит массив тепловой карты сначала по строкам, затем по столбцам
+     * Поэтому на вход функции можно подать двумерный массив
+     * \param name Имя тепловой карты
+     * \param wstyle Настройки окна
+     * \param image Указатель на массив данных
+     * \param width Ширина тепловой карты
+     * \param height Высота тепловой карты
+     * \return состояние ошибки, 0 в случае успеха, иначе см. TypesErrors
+     */
+    int draw_heatmap(const std::string &name, const WindowSpec &wstyle, const float* image, const size_t width, const size_t height) {
         if(width == 0 || height == 0 || name.size() == 0) return EASY_PLOT_INVALID_PARAMETR;
         drawings_mutex.lock();
         int pos = get_pos_plot(name);
