@@ -1,17 +1,21 @@
 # easy_plot_cpp
-Простая библиотека C++ для рисования графиков 
+Простая библиотека C++ для рисования графиков и тепловых карт
 
 ### Описание
 
-Данная *header-only* библиотека позволяет рисовать простые графики сразу из программы.
+Данная *header-only* библиотека позволяет рисовать простые графики или тепловые карты сразу из программы.
+
 Пример:
 ![example_0 example](img/example_0.png)
+![example_heat_map](img/example_heat_map.png)![example_monochrome_image](img/example_monochrome_image.png)
 
 Отличия от других библиотек и особенности:
 
 * Для работы нужен только *FreeGLUT*, не нужно устанавливать громоздкий *OpenCV* или быть зависимым от *matplotlib*
 * Библиотека содержит мало кода, помещается в один *header* файл, ее можно легко доработать под свои нужды
 * Рисование графиков происходит в отдельном потоке, можно перерисовывать графики
+* Можно рисовать тепловые карты
+* Можно использовать курсор мыши для получения данных графика или тепловой карты
 
 ### Как установить?
 
@@ -50,6 +54,42 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 ```
+
+Чтобы нарисовать тепловую карту:
+
+```C++
+#include "easy_plot.hpp"
+
+int main(int argc, char* argv[]) {
+    easy_plot::init(&argc, argv);
+	
+    easy_plot::WindowSpec image_wstyle;
+    image_wstyle.is_grid = true;
+    image_wstyle.height = 320;
+    image_wstyle.width = 320;
+    float image_data[32*32] = {};
+    size_t image_ind = 0;
+    for(size_t x = 0 ; x < 32; ++x) {
+        for(size_t y = 0; y < 32; ++y, ++image_ind) {
+            image_data[image_ind] = 1024 - std::sqrt((x - 15) * (x - 15) + (y - 15) * (y - 15));
+        }
+    }
+
+    image_wstyle.is_heat_map = false;
+    easy_plot::draw_image("image_test", image_wstyle, image_data, 32, 32);
+    image_wstyle.is_heat_map = true;
+    easy_plot::draw_image("image_heat_map", image_wstyle, image_data, 32, 32);
+
+    while(true) {
+        std::this_thread::yield();
+    }
+    return 0;
+}
+```
+
+Программа нарисует такую тепловую карту:
+
+![example_heat_map](img/example_heat_map_2.png)
 
 ### Как пользоваться
 

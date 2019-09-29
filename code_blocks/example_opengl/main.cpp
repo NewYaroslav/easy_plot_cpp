@@ -55,8 +55,27 @@ int main(int argc, char* argv[]) {
         line06, easy_plot::LineSpec(0,1,0));
 
     easy_plot::save_image("test5", "test5.ppm");
-
     wstyle2.is_zero_x_line = true;
+
+    // нарисуем изображение
+    easy_plot::WindowSpec image_wstyle;
+    image_wstyle.is_grid = true;
+    image_wstyle.height = 320;
+    image_wstyle.width = 320;
+    float image_data[32*32] = {};
+    size_t image_ind = 0;
+    for(size_t x = 0 ; x < 32; ++x) {
+        for(size_t y = 0; y < 32; ++y, ++image_ind) {
+            image_data[image_ind] = 1024 - std::sqrt((x - 15) * (x - 15) + (y - 15) * (y - 15));
+        }
+    }
+
+    image_wstyle.is_heat_map = false;
+    easy_plot::draw_image("image_test", image_wstyle, image_data, 32, 32);
+    image_wstyle.is_heat_map = true;
+    easy_plot::draw_image("image_heat_map", image_wstyle, image_data, 32, 32);
+    // продолжим обновлять график
+
     // увеличим выборку и будем перерисовывать график некоторое время
     for(int step = 0; step < 1000; step++) {
         std::vector<double> line;
