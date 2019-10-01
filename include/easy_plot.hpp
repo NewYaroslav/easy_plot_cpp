@@ -368,8 +368,8 @@ namespace easy_plot {
             min_y -= additive;
 
             is_raw_data = true;
-
-            if(win_id == windiw_entry_id) glutPostRedisplay();
+            if(is_window_init) glutPostWindowRedisplay(win_id);
+            //if(win_id == windiw_entry_id) glutPostRedisplay();
         }
 
         /** \brief Инициализация графика
@@ -427,7 +427,7 @@ namespace easy_plot {
             init(name, wstyle, vec, styles);
         };
 
-        /** \brief Инициализируем изображение
+        /** \brief Инициализируем тепловую карту
          * \param name имя окна
          * \param wstyle стиль окна
          * \param image_data указатель на массив данных
@@ -466,8 +466,8 @@ namespace easy_plot {
             window_style = wstyle;
             is_draw_image = true;
             is_raw_data = true;
-
-            if(win_id == windiw_entry_id) glutPostRedisplay();
+            if(is_window_init) glutPostWindowRedisplay(win_id);
+            //if(win_id == windiw_entry_id) glutPostRedisplay();
         }
 
         /** \brief Инициализируем изображение

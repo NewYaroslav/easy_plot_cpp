@@ -24,6 +24,7 @@
 					<Add option="-O2" />
 					<Add option="-std=c++11" />
 					<Add option="-pg" />
+					<Add option="-g" />
 					<Add option="-DFREEGLUT_STATIC" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/include" />
 					<Add directory="../../lib/mingw/freeglut-MinGW-3.0.0-1.mp/freeglut/lib/x64" />
