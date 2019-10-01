@@ -74,6 +74,9 @@ int main(int argc, char* argv[]) {
     easy_plot::draw_heatmap("image_heatmap", image_wstyle, &image_data[0][0], 32, 32);
     image_wstyle.is_color_heatmap = true;
     easy_plot::draw_heatmap("image_heatmap_color", image_wstyle, &image_data[0][0], 32, 32);
+    image_wstyle.is_color_heatmap = true;
+    image_wstyle.is_invert_color_heatmap = true;
+    easy_plot::draw_heatmap("image_heatmap_invert_color", image_wstyle, &image_data[0][0], 32, 32);
     // продолжим обновлять график
 
     // увеличим выборку и будем перерисовывать график некоторое время

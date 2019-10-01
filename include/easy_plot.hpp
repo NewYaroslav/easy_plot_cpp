@@ -123,6 +123,7 @@ namespace easy_plot {
         bool is_zero_y_line = false;            /**< Линия нуля, если true то линия рисуется */
         bool is_grid = true;                    /**< Использовать сетку */
         bool is_color_heatmap = true;           /**< Использовать цветную тепловую карту вместо черно-белой */
+        bool is_invert_color_heatmap = false;   /**< Инвертировать цвет тепловой карты */
         double grid_period = 0.1;               /**< Период сетки */
         void *font = GLUT_BITMAP_8_BY_13;       /**< Шрифт текста */
 
@@ -589,7 +590,8 @@ namespace easy_plot {
                                 window_style.ib * scale_image_data[image_ind]);
                         } else {
                             float r, g, b;
-                            hsv_to_rgb(scale_image_data[image_ind], r, g, b);
+                            if(window_style.is_invert_color_heatmap) hsv_to_rgb(1.0 - scale_image_data[image_ind], r, g, b);
+                            else hsv_to_rgb(scale_image_data[image_ind], r, g, b);
                             glColor3f(r,g,b);
                         }
                         glVertex2f(x1, y2);
