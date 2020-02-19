@@ -32,22 +32,22 @@
 #include "easy_plot.hpp"
 
 int main(int argc, char* argv[]) {
-    easy_plot::init(&argc, argv);
+    ep::init(&argc, argv);
 	
     std::vector<double> x = {0,1,0,1,2,0,1};
-    easy_plot::plot("X", x);
+    ep::plot("X", x);
 
     // ставим красный цвет линии
     std::vector<double> y = {0,2,3,4,2,0,1};
-    easy_plot::plot("Y", y, easy_plot::LineSpec(1,0,0));
+    ep::plot("Y", y, ep::LineSpec(1,0,0));
 
 	
     std::vector<double> x2 = {0,2,6,7,8,10,12};
-    easy_plot::plot("XY", x2, y, easy_plot::LineSpec(1,1,0));
+    ep::plot("XY", x2, y, ep::LineSpec(1,1,0));
 
-    easy_plot::WindowSpec wstyle; // тут можно настроить стиль графика (цвет фона и пр.)
+    ep::WindowSpec wstyle; // тут можно настроить стиль графика (цвет фона и пр.)
     // выводим три графика в одном
-    easy_plot::plot<double>("Y1Y2Y3", wstyle, 3, x, easy_plot::LineSpec(1,0,0), x2, easy_plot::LineSpec(1,0,1), y,     easy_plot::LineSpec(0,1,0));
+    ep::plot<double>("Y1Y2Y3", wstyle, 3, x, ep::LineSpec(1,0,0), x2, ep::LineSpec(1,0,1), y,     ep::LineSpec(0,1,0));
 
     while(true) {
         std::this_thread::yield();
@@ -62,9 +62,9 @@ int main(int argc, char* argv[]) {
 #include "easy_plot.hpp"
 
 int main(int argc, char* argv[]) {
-    easy_plot::init(&argc, argv);
+    ep::init(&argc, argv);
 	
-    easy_plot::WindowSpec image_wstyle;
+    ep::WindowSpec image_wstyle;
     image_wstyle.is_grid = true;
     image_wstyle.height = 320;
     image_wstyle.width = 320;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     }
 
     image_wstyle.is_color_heatmap = true;
-    easy_plot::draw_heatmap("image_heatmap", image_wstyle, &image_data[0][0], 32, 32);
+    ep::draw_heatmap("image_heatmap", image_wstyle, &image_data[0][0], 32, 32);
 
     while(true) {
         std::this_thread::yield();
@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
 ### Как пользоваться
 
-* Для рисования графика вызовите подходящую для ваших нужд *easy_plot::plot* функцию
+* Для рисования графика вызовите подходящую для ваших нужд *ep::plot* функцию
 * Функция *plot* может принимать такие параметры, как имя окна, стиль окна (различные настройки цвета и пр., см. *WindowSpec*), данные графиков и стиль линий. 
 * Функция *draw_heatmap* может принимать такие параметры, как имя окна, стиль окна (различные настройки цвета и пр., см. *WindowSpec*), данные массива тепловой карты типа float и размер тепловой карты
 * Если графиков несколько, изначально они будут расположены по всему экрану равномерно, как на картинке
