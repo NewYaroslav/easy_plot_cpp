@@ -20,11 +20,11 @@
 
 ### Как установить?
 
-* Инструкция для *Code::Blocks* и компилятора *mingw*
+Инструкция для *Code::Blocks* и компилятора *mingw*
 
-Подключить библиотеку *freeglut* или *freeglut_static* (во втором случае также установите макрос FREEGLUT_STATIC), а также *opengl32*, *winmm*, *gdi32*. 
-Подключить в проекте заголовочный файл *include/easy_plot.hpp*
-Указать С++11 или выше
+* Подключить библиотеку *freeglut* или *freeglut_static* (во втором случае также установите макрос FREEGLUT_STATIC), а также *opengl32*, *winmm*, *gdi32*. Скачать *freeglut* для компилятора *mingw* можно здесь [https://www.transmissionzero.co.uk/software/freeglut-devel/](https://www.transmissionzero.co.uk/software/freeglut-devel/) 
+* Подключить в проекте заголовочный файл *include/easy_plot.hpp*, а так же указать пути к *include*, *freeglut/include*, *freeglut/lib/x64*
+* Указать С++11 или выше
 
 Для проверки можно запустить код:
 
@@ -103,5 +103,6 @@ int main(int argc, char* argv[]) {
 
 * *GLUT* (https://www.opengl.org/resources/libraries/glut/)[https://www.opengl.org/resources/libraries/glut/]
 * *FreeGLUT* (http://freeglut.sourceforge.net/)[http://freeglut.sourceforge.net/]
+* *FreeGLUT mingw* (https://www.transmissionzero.co.uk/software/freeglut-devel/)[https://www.transmissionzero.co.uk/software/freeglut-devel/]
 * *GL2PS* (http://www.geuz.org/gl2ps/)[http://www.geuz.org/gl2ps/]
 * *GL2PS gitlab* (https://gitlab.onelab.info/gl2ps/gl2ps)[https://gitlab.onelab.info/gl2ps/gl2ps]
