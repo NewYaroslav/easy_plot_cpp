@@ -46,6 +46,12 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="../../include/easy_plot.hpp" />
+		<Unit filename="../../include/easy_plot_common.hpp" />
+		<Unit filename="../../include/easy_plot_line_spec.hpp" />
+		<Unit filename="../../include/easy_plot_screenshot.hpp" />
+		<Unit filename="../../include/easy_plot_utility.hpp" />
+		<Unit filename="../../include/easy_plot_window_spec.hpp" />
+		<Unit filename="../../include/main/easy_plot_draw.hpp" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />
